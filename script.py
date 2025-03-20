@@ -206,17 +206,7 @@ print('Dumped pipelines!')
 X['cluster'] = pipe_clustering.predict(X=X)
 X_predict = pipe.predict(X)
 new_churn = pd.read_csv('churn_data.csv')
-new_churn['predict'] = X_predict
-new_churn.to_csv('churn_data_predictions.csv', index=False)
-
-
-print( 'New CSV file Created' )
-
-# PDP Analysis 
-
-from sklearn.inspection import PartialDependenceDisplay, partial_dependence
-import matplotlib.pyplot as plt
-import matplotlib.backends.backend_pdf
+new_churn['predict'] = X_predict# Atidot
 
 scaler = StandardScaler()
 X_train_scaled = scaler.fit_transform(X_train)
