@@ -10,6 +10,9 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split, cross_validate
 from sklearn.metrics import silhouette_score, classification_report, precision_score, recall_score, f1_score
 from sklearn.cluster import KMeans
+from sklearn.inspection import PartialDependenceDisplay, partial_dependence
+import matplotlib.pyplot as plt
+import matplotlib.backends.backend_pdf
 
 np.random.seed(42) # Set seed so that the results are reproducable
 # This shoud be deleted or commented out in case we want a more stohastic algorithm
@@ -208,3 +211,69 @@ new_churn.to_csv('churn_data_predictions.csv', index=False)
 
 
 print( 'New CSV file Created' )
+
+# PDP Analysis 
+
+from sklearn.inspection import PartialDependenceDisplay, partial_dependence
+import matplotlib.pyplot as plt
+import matplotlib.backends.backend_pdf
+
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+# Train a random forest classifier
+rf = RandomForestClassifier(n_estimators=100, random_state=42)
+rf.fit(X_train_scaled, y_train)
+
+
+import matplotlib.backends.backend_pdf
+pdf = matplotlib.backends.backend_pdf.PdfPages("pdp_analysis.pdf")
+
+
+# Perform PDP analysis
+features = list(range(X_train.shape[1]))  # Get the number of features in X_train
+import matplotlib.backends.backend_pdf
+pdf = matplotlib.backends.backend_pdf.PdfPages("pdp_analysis.pdf")
+names = X_train.columns
+
+for feature in features:
+    fig, axs = plt.subplots(2, 1, figsize=(10, 10))
+    dep = partial_dependence(rf, X_train_scaled, [feature], percentiles=(0.05, 0.95))
+
+    pdp, axes = dep.keys()
+
+    display = PartialDependenceDisplay.from_estimator(rf, X_train_scaled, [feature], percentiles=(0.05, 0.95))
+    display.plot(ax=axs[0])
+    axs[0].set_title(f'Partial Dependence Plot for Feature {names[feature]}')
+    axs[0].set_xlabel('Feature Value')
+    axs[0].set_ylabel('Predicted Probability')
+    axs[1].axis('off')
+
+    # Check if the feature has a significant impact
+    max_val = dep['grid_values'][0].max()
+    min_val = dep['grid_values'][0].min()
+    
+    steepness = (max_val - min_val) / abs((max_val + min_val) / 2)
+
+    if steepness > 0.5:  # Adjust this threshold as needed
+        comment = f"This plot shows that feature {names[feature]} has a strong relationship with the predicted probability of churn."
+        conclusion = f"Based on this plot, we can conclude that feature {names[feature]} has a significant impact on the predicted probability of churn."
+    else:
+        comment = f"This plot shows that feature {names[feature]} does not have a strong relationship with the predicted probability of churn."
+        conclusion = "This suggests that feature is not an important factor in determining the predicted probability of churn."
+
+    axs[1].text(0.1, 0.8, comment, fontsize=10)
+    axs[1].text(0.1, 0.6, conclusion, fontsize=10)
+
+
+    # axs[1].text(0.1, 0.8, f'Comment: This plot shows the relationship between feature {feature} and the predicted probability of churn.', fontsize=12)
+    # axs[1].text(0.1, 0.6, f'Conclusion: Based on this plot, we can conclude that feature {feature} has a significant impact on the predicted probability of churn.', fontsize=12)
+    
+    pdf.savefig(fig, bbox_inches='tight')
+    plt.close()
+
+
+pdf.close()
+
+print('PDP Done')
